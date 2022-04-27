@@ -41,8 +41,8 @@ TFile *output;
 
 void Waveforms(string filename)
 {
-  char name[100];
-  sprintf(name,"%s_histoutput.root",filename.c_str());
+  char name[500];
+  sprintf(name,"%s_ntupleoutput.root",filename.c_str());
   output=new TFile(name,"RECREATE");
   Currents = new TNtuple("Currents","Currents","pad:g4b:g4t:g3b:g3t:g2b:g2t:g1b:g1t:mask:mesh:wind");
   
@@ -243,10 +243,36 @@ void Waveforms(string filename)
   
   IonCorrected->Draw("hist");
   //myfile.close();
-  //TFile *f = new TFile(filename + "hist.root","RECREATE");
+  sprintf(name,"%s_hist.root",filename.c_str());
+  TFile *f = new TFile(name ,"RECREATE");
+  Waveform0 ->Write();
+  Waveform1 ->Write();
+  Waveform2 ->Write();
+  Waveform3 ->Write();
+  Waveform4 ->Write();
+  Waveform5 ->Write();
+  Waveform6 ->Write();
+  Waveform7 ->Write();
+  Waveform8 ->Write();
+  Waveform9 ->Write();
+  Waveform10->Write();
+  Waveform11->Write();
+  Current0  ->Write();
+  Current1  ->Write();
+  Current2  ->Write();
+  Current3  ->Write();
+  Current4  ->Write();
+  Current5  ->Write();
+  Current6  ->Write();
+  Current7  ->Write();
+  Current8  ->Write();
+  Current9  ->Write();
+  Current10 ->Write();
+  Current11   ->Write();
   IonCorrected->Write();
+  f->Write();
+  f->Close();
   myfile.close();
-  //f->Write();
-  //f->Close();
+
 }
 

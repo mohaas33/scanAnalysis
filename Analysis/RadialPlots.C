@@ -31,6 +31,7 @@ TCanvas *c_IonCurrentFlow[31];
 TCanvas *c_IonCurrent[31];
 TF1 *fit_Candle_f[31];
 TF1 *fit_pol1_f[31];
+TF1 *f_wind[31];
 TH1F *GainDistribution;
 TH1F *GainDistributionNoEdges;
 TF1 *Candles;
@@ -45,6 +46,7 @@ TCanvas *c1;
 TCanvas *c2;
 TCanvas *c3;
 TCanvas *c4;
+TCanvas *c_capacitor;
 
 TFile *output;
 
@@ -60,6 +62,9 @@ void RadialPlots(int sectorN, int moduleN)
   //gStyle->SetPaperSize(20,26);
   gStyle->SetPadTopMargin(0.05);
   gStyle->SetPadRightMargin(0.05);
+
+  c_capacitor = new TCanvas("c_capacitor","c_capacitor",800,600);
+  c_capacitor->Divide(5,6,0,0);
 
   c1 = new TCanvas("c1","c1",800,600);
   c3 = new TCanvas("c3","c3",800,600);
@@ -94,17 +99,18 @@ void RadialPlots(int sectorN, int moduleN)
  TString s_tI = ";t, [msec.];I, [nA]";
  TString s_I = ";I, [nA];N";
   int NFiles = 31;
-
+  double maximum_gain =0 ;
   // Loop over the txt files in the directory
-
+  const int nt_bins = 30000;
+  const int nt_max = 30000;
   for (int i=0; i<NFiles; i++){
     // Creating canvases to put distributions inside later on
     sprintf(label,"PadCurrent%d",i);
-    PadCurrent[i] = new TH1F(label,label+s_tI,50000,-0.5,49999.5);
+    PadCurrent[i] = new TH1F(label,label+s_tI,nt_bins,-0.5,nt_max-0.5);
     sprintf(label,"c_PadCurrent%d",i);
     c_PadCurrent[i] = new TCanvas(label,label,800, 600);
     sprintf(label,"IonCurrent%d",i);
-    IonCurrent[i] = new TH1F(label,label+s_tI,50000,-0.5,49999.5);
+    IonCurrent[i] = new TH1F(label,label+s_tI,nt_bins,-0.5,nt_max-0.5);
     sprintf(label,"c_IonCurrentFlow%d",i);
     c_IonCurrentFlow[i] = new TCanvas(label,label,800, 600);
     sprintf(label,"c_IonCurrent%d",i);
@@ -113,16 +119,16 @@ void RadialPlots(int sectorN, int moduleN)
     //sprintf(label,"h_ibf_wind_%d",i);
     //h_ibf_wind[i] = new TH2F(label,label, 18,-0.3,0.3, 90, -1,1);
     sprintf(label,"h_ibf_wind_%d",i);
-    h_ibf_wind[i] = new TH2F(label,label, 90, -1, 1 , 90, -1.0, 1.0);
+    h_ibf_wind[i] = new TH2F(label,label, 30, -0.9, 0.9 , 30, -0.9, 0.9);
 
     sprintf(label,"h_ibf_%d",i);
-    h_ibf[i] = new TH1F(label,label+s_I, 50000,-0.5,49999.5);
+    h_ibf[i] = new TH1F(label,label+s_I, nt_bins,-0.5,nt_max-0.5);
     sprintf(label,"h_ibf_corr_%d",i);
-    h_ibf_corr[i] = new TH1F(label,label+s_I, 50000,-0.5,49999.5);
+    h_ibf_corr[i] = new TH1F(label,label+s_I, nt_bins,-0.5,nt_max-0.5);
     sprintf(label,"h_wind_%d",i);
-    h_wind[i] = new TH1F(label,label+s_I, 50000,-0.5,49999.5);
+    h_wind[i] = new TH1F(label,label+s_I, nt_bins,-0.5,nt_max-0.5);
     sprintf(label,"h_wind_scaled_%d",i);
-    h_wind_scaled[i] = new TH1F(label,label+s_I, 50000,-0.5,49999.5);
+    h_wind_scaled[i] = new TH1F(label,label+s_I, nt_bins,-0.5,nt_max-0.5);
 
     
     double begin=-9999;
@@ -193,25 +199,26 @@ void RadialPlots(int sectorN, int moduleN)
 		
 		      double ion = mesh;
 		
-		      int blankreads=4700;
-		      if (nread<blankreads){
-		        sum += gain;
-		      }
-		      else{
-		        if (!found1){
-			        if (gain > 12 + sum/((float)blankreads)){
-			          begin = nread;
-			          found1 = true;
-			        }
-			      }
-		    
-		        if (found1 && !found2 && nread > (begin+3*blankreads) ){
-        		  if (gain < 12 + sum/((float)blankreads)){
-			          end = nread;
-			          found2 = true;
-			        }
-			      }
-		      }
+		      //int blankreads=4000;
+          //
+		      //if (nread<blankreads){
+		      //  sum += gain;
+		      //}
+		      //else{
+		      //  if (!found1){
+			    //    if (gain > 12 + sum/((float)blankreads)){
+			    //      begin = nread;
+			    //      found1 = true;
+			    //    }
+			    //  }
+		    //
+		      //  if (found1 && !found2 && nread > (begin+3*blankreads) ){
+        	//	  if (gain < 12 + sum/((float)blankreads)){
+			    //      end = nread;
+			    //      found2 = true;
+			    //    }
+			    //  }
+		      //}
 
 		
           // Fill histograms with the values of the currents
@@ -232,7 +239,41 @@ void RadialPlots(int sectorN, int moduleN)
 	    myfile.close();
 	  }
       
+    float max_gain = PadCurrent[i]->GetBinContent(PadCurrent[i]->GetMaximumBin());
+    if(max_gain> maximum_gain) maximum_gain = max_gain;
+    float min_fit = max_gain / 4;
+    float par_0_15 = max_gain * 0.8;
+    float par_0_15_min = max_gain * 0.5;
+    float par_0_15_max = max_gain * 1.5;
+    cout<< "Min Fit = "<<min_fit<<endl;
+	  int nread=0;
+	  double sum=0;
+    cout<<"N bins = "<<PadCurrent[i]->GetNbinsX()<<endl;
+    for (int nread = 0; nread<PadCurrent[i]->GetNbinsX(); nread++){
 
+          double gain = PadCurrent[i]->GetBinContent(nread+1);
+
+		      int blankreads=4000;
+          
+		      if (nread<blankreads){
+		        sum += gain;
+		      }
+		      else{
+		        if (!found1){
+			        if (gain > min_fit + sum/((float)blankreads)){
+			          begin = nread;
+			          found1 = true;
+			        }
+			      }
+		    
+		        if (found1 && !found2 && nread > (begin+3*blankreads) ){
+        		  if (gain < min_fit + sum/((float)blankreads)){
+			          end = nread;
+			          found2 = true;
+			        }
+			      }
+		      }
+    }
 
 
 
@@ -267,44 +308,44 @@ void RadialPlots(int sectorN, int moduleN)
       double spacing = range/16.0;
 
       // These parameters have to be taken from the maximum current in the file ! 
-      Candles->SetParameter(0,2*20);
-      Candles->SetParameter(1,3*20);
-      Candles->SetParameter(2,3*20);
-      Candles->SetParameter(3,3*20);
-      Candles->SetParameter(4,3*20);
-      Candles->SetParameter(5,3*20);
-      Candles->SetParameter(6,3*20);
-      Candles->SetParameter(7,3*20);
-      Candles->SetParameter(8,3*20);
-      Candles->SetParameter(9,3*20);
-      Candles->SetParameter(10,4*20);
-      Candles->SetParameter(11,4*20);
-      Candles->SetParameter(12,4*20);
-      Candles->SetParameter(13,4*20);
-      Candles->SetParameter(14,4*20);
-      Candles->SetParameter(15,6*20);
+      Candles->SetParameter(0,par_0_15);
+      Candles->SetParameter(1,par_0_15);
+      Candles->SetParameter(2,par_0_15);
+      Candles->SetParameter(3,par_0_15);
+      Candles->SetParameter(4,par_0_15);
+      Candles->SetParameter(5,par_0_15);
+      Candles->SetParameter(6,par_0_15);
+      Candles->SetParameter(7,par_0_15);
+      Candles->SetParameter(8,par_0_15);
+      Candles->SetParameter(9,par_0_15);
+      Candles->SetParameter(10,par_0_15);
+      Candles->SetParameter(11,par_0_15);
+      Candles->SetParameter(12,par_0_15);
+      Candles->SetParameter(13,par_0_15);
+      Candles->SetParameter(14,par_0_15);
+      Candles->SetParameter(15,par_0_15);
       Candles->SetParameter(16,begin+0.1*spacing);
       Candles->SetParameter(17,spacing);
       Candles->SetParameter(18,spacing/5.0);
       Candles->SetParameter(19,0);
       Candles->SetParameter(20,0);
 
-      Candles->SetParLimits(0,10,80);
-      Candles->SetParLimits(1,10,80);
-      Candles->SetParLimits(2,10,80);
-      Candles->SetParLimits(3,10,80);
-      Candles->SetParLimits(4,10,80);
-      Candles->SetParLimits(5,10,80);
-      Candles->SetParLimits(6,10,80);
-      Candles->SetParLimits(7,10,80);
-      Candles->SetParLimits(8,10,80);
-      Candles->SetParLimits(9,10,80);
-      Candles->SetParLimits(10,10,80);
-      Candles->SetParLimits(11,10,80);
-      Candles->SetParLimits(12,10,80);
-      Candles->SetParLimits(13,10,80);
-      Candles->SetParLimits(14,10,80);
-      Candles->SetParLimits(15,10,80);
+      Candles->SetParLimits(0,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(1,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(2,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(3,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(4,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(5,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(6,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(7,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(8,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(9,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(10,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(11,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(12,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(13,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(14,par_0_15_min,par_0_15_max);
+      Candles->SetParLimits(15,par_0_15_min,par_0_15_max);
       Candles->SetParLimits(16,begin,begin+3*spacing);
       Candles->SetParLimits(17,range/(16.0*1.25),range/15.0);
       Candles->SetParLimits(18,spacing/10.0,spacing/2.0);
@@ -327,8 +368,15 @@ void RadialPlots(int sectorN, int moduleN)
 
         // wind_scaled is the current on the capacitor
         // it has a slope to remove the slope it is fitted and the finction is subtrackted from the distribution
-        h_wind_scaled[i]->Fit("pol1","q");
-        h_wind_scaled[i]->Add(h_wind_scaled[i]->GetFunction("pol1"),-1.0);
+        TH1F *h_wind_tmp = (TH1F*)h_wind[i]->Clone();
+        h_wind_tmp->Rebin(500);
+        h_wind_tmp->Scale(1./500);
+        h_wind_tmp->Fit("pol1","QE0");//, "", 1000, 24000);
+        sprintf(label,"f_wind_pol1_%d",i);
+        f_wind[i] = (TF1*)h_wind_tmp->GetFunction("pol1")->Clone(label);
+
+        //h_wind[i]->GetFunction("pol1")->Draw()
+        h_wind_scaled[i]->Add(f_wind[i],-1.0);
 
         // is correlation plot  to find the scale factor to correct current from capacitor 
         for (int n=1; n<=h_wind_scaled[i]->GetNbinsX(); n++)
@@ -337,7 +385,7 @@ void RadialPlots(int sectorN, int moduleN)
           //double y = h_wind_scaled[i]->GetBinContent(n);
           double x = h_wind_scaled[i]->GetBinContent(n);
           double y = h_ibf[i]->GetBinContent(n);
-          if (h_ibf[i]->GetBinCenter(n)<4000 || h_ibf[i]->GetBinCenter(n)>22000){
+          if ((h_ibf[i]->GetBinCenter(n)>1000 && h_ibf[i]->GetBinCenter(n)<4000) || h_ibf[i]->GetBinCenter(n)>22000){
             h_ibf_wind[i]->Fill(x,y);
           }
         }
@@ -362,6 +410,11 @@ void RadialPlots(int sectorN, int moduleN)
 	      fit_Candle_f[i] = (TF1*) PadCurrent[i]->GetFunction("Candles")->Clone(label);
         fit_Candle_f[i]->SetLineColor(2);
         fit_Candle_f[i]->Draw("same");
+
+        c_capacitor->cd(CanvasPointer);
+        h_wind[i]->SetLineColor(2);
+        h_wind[i]->Draw("hist");
+        f_wind[i]->Draw("same");
 
 	      CanvasPointer++;
 	    
@@ -396,20 +449,27 @@ void RadialPlots(int sectorN, int moduleN)
       continue;
     }    
   }//end of loop over phi positions
-  cout<<"c2->cd();"<<endl;
 
-  
-
+  cout<<"c1->Print();"<<endl;
   sprintf(label,"./Plots/AllFits_R%d_M%d.png",sectorN, moduleN);
   c1->Print(label);
+  
+  cout<<"c_capacitor->Print();"<<endl;
+  sprintf(label,"./Plots/capacitor_R%d_M%d.png",sectorN, moduleN);
+  c_capacitor->Print(label);
 
   cout<<"c3->cd();"<<endl;
   c3->cd();
   GainDistribution->Draw();
+  sprintf(label,"R %d Module %d RMS/Mean=%.4f", sectorN, moduleN, GainDistribution->GetRMS()/GainDistribution->GetMean());
+  l_Marker(.75 ,.45 ,.9 ,.5,label,0.04,1);
+
   
   cout<<"c4->cd();"<<endl;
   c4->cd();
   GainDistributionNoEdges->Draw();
+  sprintf(label,"R %d Module %d RMS/Mean=%.4f", sectorN, moduleN, GainDistributionNoEdges->GetRMS()/GainDistributionNoEdges->GetMean());
+  l_Marker(.75 ,.45 ,.9 ,.5,label,0.04,1);
 
   sprintf(label,"./Plots/GainDistribution_R%d_M%d.png",sectorN, moduleN);
   c3->Print(label);
@@ -490,7 +550,7 @@ void RadialPlots(int sectorN, int moduleN)
     
     c_PadCurrent[i]->cd();
     PadCurrent[i]->GetXaxis()->SetRangeUser(0., 25000.);
-    PadCurrent[i]->GetYaxis()->SetRangeUser(-0.6, 80.);
+    PadCurrent[i]->GetYaxis()->SetRangeUser(-0.6, 1.5*maximum_gain);
 	  PadCurrent[i]->Draw("hist");
 	  fit_Candle_f[i]->Draw("same");
     h_ibf_corr[i]->Draw("histsame");
@@ -532,7 +592,8 @@ void RadialPlots(int sectorN, int moduleN)
 
   for (int i=3; i<NFiles-2; i++){
     c_correlation->cd(i);
-    //h_ibf_wind[i]->GetZaxis()->SetRangeUser(0., 25000.);
+    h_ibf_wind[i]->GetXaxis()->SetRangeUser(-0.5, 0.5);
+    h_ibf_wind[i]->GetYaxis()->SetRangeUser(-0.5, 0.5);
     h_ibf_wind[i]->Draw("colz");
   }
   sprintf(label,"./Plots/correlations_R%d_M%d.png",sectorN, moduleN);
@@ -540,14 +601,14 @@ void RadialPlots(int sectorN, int moduleN)
 
 
   c2 = new TCanvas("GainMap","GainMap",800,600);
-  hGainMap->GetZaxis()->SetRangeUser(0., 70.);
+  hGainMap->GetZaxis()->SetRangeUser(0., maximum_gain*1.1);
   hGainMap->Draw("colz");
   sprintf(label,"./Plots/GainMap_R%d_M%d.png",sectorN, moduleN);
   c2->Print(label);
 
   TCanvas *c_FineGain     = new TCanvas("c_FineGain",    "c_FineGain",     800, 600);
   FineGain->GetYaxis()->SetRangeUser(0., 25000.);
-  FineGain->GetZaxis()->SetRangeUser(0., 70.);
+  FineGain->GetZaxis()->SetRangeUser(0., maximum_gain*1.1);
   FineGain->Draw("colz");
   sprintf(label,"./Plots/FineGain_R%d_M%d.png", sectorN, moduleN);
   c_FineGain->Print(label);
